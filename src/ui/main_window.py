@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QPushButton, QLabel, QFileDialog,
     QTextEdit, QWidget, QTabWidget, QHBoxLayout, QListWidget, QMessageBox
 )
+from PyQt5.QtGui import QScreen
 from PyQt5.QtCore import QThread, pyqtSignal
 from src.tasks.profile_handler import handle_profile
 from src.utils.config import API_URL
@@ -86,9 +87,15 @@ class MainWindow(QMainWindow):
         self.fetch_button.clicked.connect(lambda: asyncio.run(self.fetch_profiles_from_api()))
         layout.addWidget(self.fetch_button)
 
-        # Profiles List
+        # Profiles List (Multi-Selection Enabled)
         self.profile_list = QListWidget()
+        self.profile_list.setSelectionMode(QListWidget.MultiSelection)
         layout.addWidget(self.profile_list)
+
+        # Start Selected Profiles Button
+        self.start_selected_button = QPushButton("Start Selected Profiles")
+        self.start_selected_button.clicked.connect(self.start_selected_profiles)
+        layout.addWidget(self.start_selected_button)
 
         # Set layout for the tab
         self.profile_tab.setLayout(layout)
@@ -120,7 +127,51 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", error_message)
             self.profile_label.setText("Error fetching profiles.")
             print(error_message)  # Log the error for debugging
-    
+
+    def start_selected_profiles(self):
+        """Start tasks for the selected profiles."""
+        selected_items = self.profile_list.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Warning", "No profiles selected!")
+            return
+
+        # Get screen resolution
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+
+        # Get selected profiles
+        selected_profiles = []
+        win_size_x, win_size_y = 500, 600  # Default window size
+        x_offset = 5  # Horizontal gap between windows
+        y_offset = 5  # Vertical gap between rows
+        current_x, current_y = 0, 0  # Start at the top-left corner
+
+        for index, item in enumerate(selected_items):
+            profile_id = item.text().split(" - ")[0]  # Extract profile ID
+            profile = next((p for p in self.profiles if p["id"] == profile_id), None)
+            if profile:
+                # Calculate adaptive position
+                if current_x + win_size_x > screen_width:  # Move to the next row
+                    current_x = 0
+                    current_y += win_size_y + y_offset
+
+                profile["win_pos"] = [current_x, current_y]
+                profile["win_size"] = [win_size_x, win_size_y]
+                selected_profiles.append(profile)
+
+                # Update x position for the next profile
+                current_x += win_size_x + x_offset
+
+        # Pass selected profiles to the main tab
+        self.selected_profiles = selected_profiles
+        self.label.setText(f"Selected {len(selected_profiles)} profiles to run.")
+        self.start_button.setEnabled(True)
+
+        # Debug print to verify positions
+        print(f"Selected Profiles with Positions: {self.selected_profiles}")
+
     def setup_main_tab(self):
         """Set up the main tab layout."""
         layout = QVBoxLayout()
@@ -179,8 +230,13 @@ class MainWindow(QMainWindow):
 
     def start_tasks(self):
         """Start the automation tasks."""
+        if not hasattr(self, 'selected_profiles') or not self.selected_profiles:
+            QMessageBox.warning(self, "Warning", "No profiles selected to run!")
+            return
+
         self.log_output.append("Starting tasks...")
-        self.worker = WorkerThread(self.profiles)
+        print(f"Profiles to run: {self.selected_profiles}")
+        self.worker = WorkerThread(self.selected_profiles)  # Use selected profiles
         self.worker.log_signal.connect(self.log_output.append)
         self.worker.start()
 
