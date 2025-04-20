@@ -1,11 +1,15 @@
 import sys
 import asyncio
 import json
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QLabel, QFileDialog, QTextEdit, QWidget
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QVBoxLayout, QPushButton, QLabel, QFileDialog,
+    QTextEdit, QWidget, QTabWidget, QHBoxLayout
+)
 from PyQt5.QtCore import QThread, pyqtSignal
 from src.tasks.profile_handler import handle_profile
 from src.utils.config import API_URL
 from src.api.gpm_login_api import GPMLoginApiV3
+
 
 class WorkerThread(QThread):
     log_signal = pyqtSignal(str)
@@ -34,42 +38,81 @@ class WorkerThread(QThread):
         finally:
             loop.close()
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Task Automation GUI")
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(100, 100, 800, 600)
 
+        # Create the main layout
         self.layout = QVBoxLayout()
+
+        # Create the tab widget
+        self.tabs = QTabWidget()
+        self.layout.addWidget(self.tabs)
+
+        # Add the main tab
+        self.main_tab = QWidget()
+        self.tabs.addTab(self.main_tab, "Main Tab")
+        self.setup_main_tab()
+
+        # Add another tab named "tab1"
+        self.tab1 = QWidget()
+        self.tabs.addTab(self.tab1, "Tab1")
+        self.setup_tab1()
+
+        # Set the central widget
+        container = QWidget()
+        container.setLayout(self.layout)
+        self.setCentralWidget(container)
+
+    def setup_main_tab(self):
+        """Set up the main tab layout."""
+        layout = QVBoxLayout()
 
         # Label
         self.label = QLabel("Load a profiles.json file to start.")
-        self.layout.addWidget(self.label)
+        layout.addWidget(self.label)
 
         # Load Profiles Button
         self.load_button = QPushButton("Load Profiles")
         self.load_button.clicked.connect(self.load_profiles)
-        self.layout.addWidget(self.load_button)
+        layout.addWidget(self.load_button)
 
         # Start Tasks Button
         self.start_button = QPushButton("Start Tasks")
         self.start_button.setEnabled(False)
         self.start_button.clicked.connect(self.start_tasks)
-        self.layout.addWidget(self.start_button)
+        layout.addWidget(self.start_button)
 
         # Log Output
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
-        self.layout.addWidget(self.log_output)
+        layout.addWidget(self.log_output)
 
-        # Set central widget
-        container = QWidget()
-        container.setLayout(self.layout)
-        self.setCentralWidget(container)
+        self.main_tab.setLayout(layout)
 
-        self.profiles = []
+    def setup_tab1(self):
+        """Set up the layout for Tab1."""
+        layout = QVBoxLayout()
+
+        # Add a label and a button to Tab1
+        label = QLabel("This is Tab1. Add your custom functionality here.")
+        layout.addWidget(label)
+
+        button = QPushButton("Click Me")
+        button.clicked.connect(self.on_tab1_button_click)
+        layout.addWidget(button)
+
+        self.tab1.setLayout(layout)
+
+    def on_tab1_button_click(self):
+        """Handle button click in Tab1."""
+        print("Button in Tab1 clicked!")
 
     def load_profiles(self):
+        """Load profiles from a JSON file."""
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Profiles File", "", "JSON Files (*.json)")
         if file_path:
             try:
@@ -81,10 +124,12 @@ class MainWindow(QMainWindow):
                 self.log_output.append(f"Error loading profiles: {e}")
 
     def start_tasks(self):
+        """Start the automation tasks."""
         self.log_output.append("Starting tasks...")
         self.worker = WorkerThread(self.profiles)
         self.worker.log_signal.connect(self.log_output.append)
         self.worker.start()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
