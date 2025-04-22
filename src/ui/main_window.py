@@ -14,6 +14,7 @@ from src.api.gpm_login_api import GPMLoginApiV3
 from src.tasks.fetch_profiles import fetch_profiles
 
 
+
 class WorkerThread(QThread):
     log_signal = pyqtSignal(str)
 
@@ -283,11 +284,17 @@ class MainWindow(QMainWindow):
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     self.profiles = json.load(f)
-                self.label.setText(f"Loaded {len(self.profiles)} profiles.")
+                
+                # Log the loaded profile IDs
+                profile_ids = [profile.get("id", "Unknown ID") for profile in self.profiles]
+                self.log_output.append(f"Loaded {len(profile_ids)} profiles:")
+                for profile_id in profile_ids:
+                    self.log_output.append(f" - Profile ID: {profile_id}")
+                
+                self.label.setText(f"Loaded {len(profile_ids)} profiles.")
                 self.start_button.setEnabled(True)
             except Exception as e:
                 self.log_output.append(f"Error loading profiles: {e}")
-
     def start_tasks(self):
         """Start the automation tasks."""
         if not hasattr(self, 'selected_profiles') or not self.selected_profiles:
@@ -334,6 +341,7 @@ class MainWindow(QMainWindow):
             "Close Selected Profiles",
             f"Successfully closed {success_count} profiles.\nFailed to close {failure_count} profiles."
         )
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
