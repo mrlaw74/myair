@@ -1,6 +1,7 @@
 import sys
 import asyncio
 import json
+import httpx
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QPushButton, QLabel, QFileDialog,
     QTextEdit, QWidget, QTabWidget, QHBoxLayout, QListWidget, QMessageBox
@@ -141,10 +142,20 @@ class MainWindow(QMainWindow):
         self.profile_list.setSelectionMode(QListWidget.MultiSelection)
         layout.addWidget(self.profile_list)
 
+        # Load Profiles Button
+        self.load_button = QPushButton("Load Profiles From File")
+        self.load_button.clicked.connect(self.load_profiles)
+        layout.addWidget(self.load_button)
+
         # Start Selected Profiles Button
         self.start_selected_button = QPushButton("Start Selected Profiles")
         self.start_selected_button.clicked.connect(self.start_selected_profiles)
         layout.addWidget(self.start_selected_button)
+
+        # Close Selected Profiles Button
+        self.close_selected_button = QPushButton("Close Selected Profiles")
+        self.close_selected_button.clicked.connect(lambda: asyncio.run(self.close_selected_profiles()))
+        layout.addWidget(self.close_selected_button)
 
         # Set layout for the tab
         self.profile_tab.setLayout(layout)
@@ -229,10 +240,10 @@ class MainWindow(QMainWindow):
         self.label = QLabel("Load a profiles.json file to start.")
         layout.addWidget(self.label)
 
-        # Load Profiles Button
-        self.load_button = QPushButton("Load Profiles")
-        self.load_button.clicked.connect(self.load_profiles)
-        layout.addWidget(self.load_button)
+        # # Load Profiles Button
+        # self.load_button = QPushButton("Load Profiles")
+        # self.load_button.clicked.connect(self.load_profiles)
+        # layout.addWidget(self.load_button)
 
         # Start Tasks Button
         self.start_button = QPushButton("Start Tasks")
@@ -288,7 +299,41 @@ class MainWindow(QMainWindow):
         self.worker = WorkerThread(self.selected_profiles)  # Use selected profiles
         self.worker.log_signal.connect(self.log_output.append)
         self.worker.start()
+    
+    async def close_selected_profiles(self):
+        """Close selected profiles using the API."""
+        selected_items = self.profile_list.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Warning", "No profiles selected to close!")
+            return
 
+        api_url_base = "http://127.0.0.1:19995/api/v3/profiles/close"
+        success_count = 0
+        failure_count = 0
+
+        for item in selected_items:
+            profile_id = item.text().split(" - ")[0]  # Extract profile ID
+            print(f"Attempting to close profile: {profile_id}")  # Debug print
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(f"{api_url_base}/{profile_id}")
+                    response_data = response.json()
+                    print(f"API Response for {profile_id}: {response_data}")  # Debug print
+                    if response_data.get("success"):
+                        print(f"[{profile_id}] Closed successfully.")
+                        success_count += 1
+                    else:
+                        print(f"[{profile_id}] Failed to close: {response_data.get('message')}")
+                        failure_count += 1
+            except Exception as e:
+                print(f"[{profile_id}] Error closing profile: {e}")
+                failure_count += 1
+
+        QMessageBox.information(
+            self,
+            "Close Selected Profiles",
+            f"Successfully closed {success_count} profiles.\nFailed to close {failure_count} profiles."
+        )
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
