@@ -47,6 +47,55 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Task Automation GUI")
         self.setGeometry(100, 100, 800, 600)
 
+        # Apply a global stylesheet for the entire window
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f0f8ff;  /* Light blue background */
+            }
+            QLabel {
+                font-size: 10px;
+                font-weight: bold;
+                color: #333333;  /* Dark gray text */
+            }
+            QPushButton {
+                background-color: #4CAF50;  /* Green button */
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 5px;
+                font-size: 10px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;  /* Darker green on hover */
+            }
+            QListWidget {
+                border: 1px solid #cccccc;
+                background-color: #ffffff;
+                font-size: 10px;
+            }
+            QTextEdit {
+                border: 1px solid #cccccc;
+                background-color: #ffffff;
+                font-size: 10px;
+            }
+            QTabWidget::pane {
+                border: 1px solid #cccccc;
+                background-color: #ffffff;
+            }
+            QTabBar::tab {
+                background: #e0e0e0;
+                padding: 8px;
+                border: 1px solid #cccccc;
+                border-bottom: none;
+                font-size: 10px;
+            }
+            QTabBar::tab:selected {
+                background: #ffffff;
+                border: 1px solid #cccccc;
+                border-bottom: 1px solid #ffffff;
+            }
+        """)
+
         # Create the main layout
         self.layout = QVBoxLayout()
 
